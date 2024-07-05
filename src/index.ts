@@ -4,7 +4,7 @@ import { EventEmitter } from './components/base/events';
 import { API_URL, CDN_URL } from './utils/constants';
 import { AppApi } from './components/AppApi';
 import { Api } from './components/base/api';
-import { IApi, IOrder, IProduct } from './types';
+import { IApi, IOrder, IProduct, IUserData } from './types';
 import { Page } from './components/Page';
 import { AppData } from './components/AppData';
 import { Product } from './components/Product';
@@ -13,6 +13,7 @@ import { Modal } from './components/common/Modal';
 import { Basket } from './components/Basket';
 import { Order } from './components/Order';
 import { Success } from './components/Success';
+import { Contacts } from './components/Contacts';
 
 // Экземпляр событий
 const events = new EventEmitter();
@@ -42,18 +43,18 @@ const page = new Page(document.querySelector('.page'), events);
 const modal = new Modal(document.querySelector('#modal-container'), events);
 const basket = new Basket(cloneTemplate(basketTemplate), events);
 const order = new Order(cloneTemplate(orderTemplate), events);
-const contacts = new Order(cloneTemplate(contactsTemplate), events);
+const contacts = new Contacts(cloneTemplate(contactsTemplate), events);
+const success = new Success(cloneTemplate(successTemplate), { onClick: () => { modal.close() } }); 
 
 // Получение данных с сервера
 api.getData()
     .then(appData.setCatalog.bind(appData))
-    .then(() => events.emit('cards:loaded'))
     .catch((error) => {
         console.error(error);
     })
 
 // Событие успешной загрузки данных. Рендер коллекции карточек
-events.on('cards:loaded', () => {
+events.on('catalog:changed', () => {
     const cardsArray = appData.catalog.map((item) => {
         const cardInstant = new Product(cloneTemplate(cardCatalogTemplate), {
 			onClick: () => events.emit('card:select', item),
@@ -71,7 +72,7 @@ events.on('preview:changed', (item: IProduct) => {
 	const cardInstantPreview = new Product(cloneTemplate(cardPreviewTemplate), {
 		onClick: () => {
 			events.emit('item:check', item);
-			cardInstantPreview.button = appData.checkItem(item);
+			cardInstantPreview.button = appData.basket.indexOf(item) === -1 ? 'В корзину' : 'Убрать из корзины';
 		},
 	});
 
@@ -81,7 +82,7 @@ events.on('preview:changed', (item: IProduct) => {
 			title: item.title,
 			image: item.image,
 			description: item.description,
-			button: appData.checkItem(item),
+			button: appData.basket.indexOf(item) === -1 ? 'В корзину' : 'Убрать из корзины',
 			price: item.price,
 		}),
 	});
@@ -99,10 +100,7 @@ events.on('modal:close', () => {
 
 // Событие нажатия на кнопку в корзину
 events.on('item:check', (item: IProduct) => {
-	if (appData.basket.indexOf(item) === -1) {
-        events.emit('item:add', item)
-        ;}
-	    else {events.emit('item:remove', item);}
+	appData.checkItem(item);
 });
 
 // Событие добавления товара в корзину
@@ -137,16 +135,14 @@ events.on('basket:changed', (items: IProduct[]) => {
 		});
 	});
 	// Обновление суммы заказа
-	appData.order.total = basket.setTotal(appData.basket);
-
-});
+	 basket.total = appData.setTotal();
+})
 
 // Собыьтие изменения счетчика товаров корзины
 events.on('count:changed', () => (page.counter = appData.basket.length));
 
 // Событие открытия модального окна оформления доставки
 events.on('order:open', () => {
-    appData.order.items = appData.basket.map((item) => item.id);
 	modal.render({
 		content: order.render({
 			payment: '',
@@ -156,6 +152,10 @@ events.on('order:open', () => {
 		}),
 	});
 });
+
+// Событие проверки выбора способа доставки
+events.on('payment:select', ({ button }: { button: HTMLButtonElement }) => {
+	order.selected(button.name);});
 
 // Событие проверки выбора способа оплаты
 events.on('order:change', ({ name }: { name: string }) => {
@@ -191,7 +191,7 @@ events.on('formErrors:change', (errors: Partial<IOrder>) => {
 // Изменилось одно из полей в форме доставки
 events.on(
 	/^order\..*:change/,
-	(data: { field: keyof IOrder; value: string }) => {
+	(data: { field: keyof IUserData; value: string }) => {
 		appData.setOrderField(data.field, data.value);
 	}
 );
@@ -199,24 +199,18 @@ events.on(
 // Изменилось одно из полей в форме контактов
 events.on(
 	/^contacts\..*:change/,
-	(data: { field: keyof IOrder; value: string }) => {
+	(data: { field: keyof IUserData; value: string }) => {
 		appData.setOrderField(data.field, data.value);
 	}
 );
 
-
 // Событие отправки формы заказа
 events.on('contacts:submit', () => {
 	api
-		.order(appData.order)
+		.order(appData.createOrder())
 		.then(() => {
-			const success = new Success(cloneTemplate(successTemplate), {
-				onClick: () => {
-					modal.close();
-				},
-			});
-
-			success.total = `Списано ${appData.order.total} синапсов`;
+			console.log(appData.createOrder())
+			success.total = `Списано ${appData.setTotal()} синапсов`;
 			appData.clearBasket();
 			modal.render({
 				content: success.render({}),

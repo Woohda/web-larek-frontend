@@ -35,10 +35,4 @@ export class Basket extends Component<IBasket> {
 	set selectedItems(items: IProduct[]) {
 		if (items.length) this.setDisabled(this._button, false);
 	}
-
-	setTotal(items: IProduct[]) {
-		const total = items.reduce((total, item) => total + item.price, 0);
-		this.total = total;
-		return total;
-	}
 }

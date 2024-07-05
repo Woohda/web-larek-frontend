@@ -14,18 +14,8 @@ export class Order extends Form<IOrder> {
 			container
 		);
 		this._paymentButton.forEach((button) =>
-			button.addEventListener('click', () => this.selected(button.name))
+			button.addEventListener('click', () => events.emit('payment:select', {button}))
 		);
-	}
-
-	set email(value: string) {
-		(this.container.elements.namedItem('email') as HTMLInputElement).value =
-			value;
-	}
-
-	set phone(value: string) {
-		(this.container.elements.namedItem('phone') as HTMLInputElement).value =
-			value;
 	}
 
 	set address(value: string) {

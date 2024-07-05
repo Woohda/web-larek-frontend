@@ -1,18 +1,18 @@
-import { FormErrors, IAppData, IOrder, IProduct } from "../types";
+import { FormErrors, IAppData, IOrder, IProduct, IUserData } from "../types";
+import { IEvents } from "./base/events";
 import { Model } from "./base/model";
 
 
 export class AppData extends Model<IAppData> {
+	events: IEvents;
 	basket: IProduct[] = [];
 	catalog: IProduct[];
 	preview: string | null;
-	order: IOrder = {
+	order: IUserData = {
 		payment: '',
 		address: '',
 		email: '',
-		phone: '',
-		total: 0,
-		items: [],
+		phone: ''
 	}
 	formErrors: FormErrors = {};
 	
@@ -39,6 +39,10 @@ removeFromBasket(item: IProduct) {
 	this.emitChanges('basket:changed', this.basket);
 }
 
+setTotal() {
+	return this.basket.reduce((total, item) => total + item.price, 0);	
+}
+
 clearBasket() {
 	this.basket = [];
 	this.emitChanges('count:changed', this.basket);
@@ -47,17 +51,23 @@ clearBasket() {
 
 checkItem(item: IProduct) { 
 	if (this.basket.indexOf(item) === -1) {
-		return 'В корзину' 
+		this.events.emit('item:add', item);
 	} else {
-		return 'Убрать из корзины'
+		this.events.emit('item:remove', item)	
 	}
 }
-setOrderField(field: keyof IOrder, value: string | number) {
-	if (field === 'total') this.order[field] = value as number;
-	else if (field === 'items') {
-		this.order[field].push(value as string);
-	} else this.order[field] = value as string;
+createOrder() {
+	const total = this.setTotal();
+	const items = this.basket.map((item) => item.id);
+	return {
+		...this.order,
+		total,
+		items
+	}
+}
 
+setOrderField(field: keyof IUserData, value: string ) {
+	this.order[field] = value as string;
 	if (this.validateForm()) this.events.emit('order:ready', this.order);
 }
 

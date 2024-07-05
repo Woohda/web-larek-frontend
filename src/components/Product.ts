@@ -49,10 +49,6 @@ export class Product extends Component<IProductItem> {
 		this.setText(this._indexItem, value);
 	}
 
-	get indexItem(): string {
-		return this._indexItem.textContent || '';
-	}
-
 	categoryColor(value: string): string {
 		switch (value) {
 			case 'софт-скил':
@@ -73,25 +69,13 @@ export class Product extends Component<IProductItem> {
         this._category.classList.add(this.categoryColor(value));
 	}
 
-	get category(): string {
-		return this._category.textContent || '';
-	}
-
 	set title(value: string) {
 		this.setText(this._title, value);
-	}
-
-	get title(): string {
-		return this._title.textContent || '';
 	}
 
 	set price(value: number | null) {
 		(value === null) ? this.setText(this._price, 'Бесценно')
 		: this.setText(this._price, `${value.toString()} синапса(-ов)`);
-	}
-
-	get price(): number {
-		return Number(this._price.textContent || '');
 	}
 
     set description(value: string | string[]) {
@@ -103,6 +87,7 @@ export class Product extends Component<IProductItem> {
 	}
 
 	set button(value: string) {
-		if (this._button) this._button.textContent = value;
+		if (this._button) this.setText(this._button, value);
 	}
+
 }
